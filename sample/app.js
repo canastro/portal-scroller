@@ -15,34 +15,89 @@ Controls.prototype.addEventListeners = function () {
 
     var self = this;
 
-    function keyPressed() {
-        if (!jumping && !jumpKeyDown) {
-            jumpKeyDown = true;
-            if (self.hero.isTouchingGround() && heldDuration === 0) {
-                self.startJump();
-            }
-        } else if (self.hero.isFalling()) {
-            jumpKeyDown = true;
+    function keyPressed(e) {
+        var value = String.fromCharCode(e.keyCode);
+
+        switch (value) {
+
+        case 'W':
+            self.jumpKeyPressed();
+            break;
+
+        case 'D':
+            self.fowardKeyPressed();
+            break;
+
+        case 'A':
+            self.backwardKeyPressed();
+            break;
         }
+
     }
 
-    function keyReleased() {
-        jumpKeyDown = false;
+    function keyReleased(e) {
         heldDuration = 0;
+
+        var value = String.fromCharCode(e.keyCode);
+
+        switch (value) {
+
+        case 'W':
+            self.jumpKeyReleased();
+            break;
+
+        case 'D':
+            self.movementKeyReleased();
+            break;
+
+        case 'A':
+            self.movementKeyReleased();
+            break;
+
+        }
     }
 
     document.onkeydown = keyPressed;
     document.onkeyup = keyReleased;
 };
 
-Controls.prototype.startJump = function () {
+Controls.prototype.fowardKeyPressed = function () {
     'use strict';
 
-    if (this.hero.isTouchingGround() && heldDuration === 0) {
-        this.hero.startJump();
-        heldDuration = 0;
-        jumping = true;
+    this.hero.setRunning(1);
+};
+
+Controls.prototype.backwardKeyPressed = function () {
+    'use strict';
+
+    this.hero.setRunning(-1);
+};
+
+Controls.prototype.movementKeyReleased = function () {
+    'use strict';
+
+    this.hero.setRunning(0);
+};
+
+Controls.prototype.jumpKeyPressed = function () {
+    'use strict';
+
+    if (!jumping && !jumpKeyDown) {
+        jumpKeyDown = true;
+        if (this.hero.isTouchingGround() && heldDuration === 0) {
+            this.hero.startJump();
+            heldDuration = 0;
+            jumping = true;
+        }
+    } else if (this.hero.isFalling()) {
+        jumpKeyDown = true;
     }
+};
+
+Controls.prototype.jumpKeyReleased = function () {
+    'use strict';
+
+    jumpKeyDown = false;
 };
 
 Controls.prototype.update = function () {
@@ -182,7 +237,10 @@ function Hero(stage, scroller, world) {
 Hero.constructor = Hero;
 Hero.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 
-Hero.HERO_START_VELOCITY = new box2D.b2Vec2(3.5, 0); // 3.5, 0
+Hero.HERO_STOP_VELOCITY = new box2D.b2Vec2(0, 0); // 3.5, 0
+Hero.HERO_START_VELOCITY = new box2D.b2Vec2(2, 0); // 3.5, 0
+Hero.HERO_SLOW_DOWN_VELOCITY = new box2D.b2Vec2(-30, 0); // 3.5, 0
+
 Hero.START_JUMP_FORCE = new box2D.b2Vec2(0, -70); // 0, -70
 Hero.RUNNING_FORCE = new box2D.b2Vec2(0.08, 0); // 0.08, 0
 Hero.JUMPING_FORCE = new box2D.b2Vec2(0, -40); // 0, -40
@@ -211,7 +269,7 @@ Hero.prototype.createHero = function () {
     this.hero = this.world.CreateBody(bodyDef);
     this.hero.CreateFixture(fixtureDef);
     this.hero.SetFixedRotation(true);
-    this.hero.SetLinearVelocity(Hero.HERO_START_VELOCITY);
+    this.hero.SetLinearVelocity(Hero.HERO_STOP_VELOCITY);
 };
 
 Hero.prototype.createHeroMovieClip = function () {
@@ -256,10 +314,20 @@ Hero.prototype.startJump = function () {
     this.hero.ApplyForce(Hero.START_JUMP_FORCE, this.hero.GetWorldCenter());
 };
 
-Hero.prototype.applyRunningForce = function () {
+/**
+ *
+ * @param {Number} value 0 - is stoped; 1 - is running foward; -1 - is running back;
+ */
+Hero.prototype.setRunning = function (value) {
     'use strict';
 
-    this.hero.ApplyForce(Hero.RUNNING_FORCE, this.hero.GetWorldCenter());
+    this.running = value;
+};
+
+Hero.prototype.applyRunningForce = function (force) {
+    'use strict';
+
+    this.hero.ApplyForce(force, this.hero.GetWorldCenter());
 };
 
 Hero.prototype.applyJumpingForce = function () {
@@ -289,16 +357,36 @@ Hero.prototype.applyHitWallVelocity = function () {
 Hero.prototype.update = function () {
 
     var worldX;
+    var force;
 
-    // Check for collision with a wall.
-    if (this.GetLinearVelocity().x === 0) {
-        this.applyHitWallVelocity();
+
+    if (!!this.running) {
+        force = Hero.HERO_START_VELOCITY.Copy();
+        if(this.running < 0) {
+            force.NegativeSelf();
+        }
+        this.applyRunningForce(force);
     } else {
-        worldX = this.getWorldCenter().x - 210 / World.WORLD_SCALE;
-        this.scroller.setViewportX(worldX * World.WORLD_SCALE);
+        this.hero.SetLinearVelocity(new box2D.b2Vec2(0, this.GetLinearVelocity().y));
     }
 
-    this.applyRunningForce();
+
+    if (this.GetLinearVelocity().x === 0){
+        this.heroMc.gotoAndStop(0);
+    } else {
+        if(!this.heroMc.playing) {
+            this.heroMc.play();
+        }
+
+        if (this.GetLinearVelocity().x < 0) {
+            this.heroMc.scale.x = -1;
+        } else if (this.GetLinearVelocity().x > 0) {
+            this.heroMc.scale.x = 1;
+        }
+    }
+
+    worldX = this.getWorldCenter().x - 210 / World.WORLD_SCALE;
+    this.scroller.setViewportX(worldX * World.WORLD_SCALE);
     this.position.y = this.getWorldCenter().y * World.WORLD_SCALE;
     this.position.x = (this.getWorldCenter().x - worldX) * World.WORLD_SCALE;
 };
@@ -534,19 +622,6 @@ Scroller.prototype.setViewportX = function (viewportX) {
     this.far.setViewportX(viewportX);
     this.mid.setViewportX(viewportX);
     this.front.setViewportX(viewportX);
-};
-
-Scroller.prototype.getViewportX = function () {
-    'use strict';
-
-    return this.viewportX;
-};
-
-Scroller.prototype.moveViewportXBy = function (units) {
-    'use strict';
-
-    var newViewportX = this.viewportX + units;
-    this.setViewportX(newViewportX);
 };
 
 module.exports = Scroller;
