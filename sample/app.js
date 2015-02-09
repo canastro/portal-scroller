@@ -15,6 +15,8 @@ function Controls(stage, hero) {
 }
 
 Controls.prototype.createInterface = function () {
+    'use strict';
+
     var texture = PIXI.Texture.fromImage("assets/resources/cog_icon.png");
 
     this.cog = new PIXI.Sprite(texture);
@@ -31,37 +33,9 @@ Controls.prototype.createInterface = function () {
 
     this.cog.interactive = true;
 
-    this.cog.mouseover = function(mouseData){
-       console.log("MOUSE OVER!");
-    }
-
-    this.cog.mouseout = function(mouseData){
-       console.log("MOUSE OUT!");
-    }
-
-    this.cog.mousedown = function(mouseData){
-       console.log("MOUSE DOWN!");
-    }
-
-    this.cog.mouseup = function(mouseData){
-       console.log("MOUSE UP!");
-    }
-
-    this.cog.click = function(mouseData){
-       main.restart();
-    }
-
-    this.cog.touchstart = function(touchData){
-       console.log("TOUCH START!");
-    }
-
-    this.cog.touchend = function(touchData){
-       console.log("TOUCH END!");
-    }
-
-    this.cog.tap = function(touchData){
-       console.log("TAP!");
-    }
+    this.cog.click = function () {
+        main.restart();
+    };
 
     this.stage.addChild(this.cog);
 };
@@ -173,6 +147,8 @@ Controls.prototype.update = function () {
 };
 
 Controls.prototype.updateHero = function (hero) {
+    'use strict';
+
     this.hero = hero;
 };
 
@@ -352,7 +328,9 @@ Hero.prototype.createHero = function () {
     this.hero.SetLinearVelocity(Hero.HERO_STOP_VELOCITY);
 };
 
-Hero.prototype.createHeroShadow = function() {
+Hero.prototype.createHeroShadow = function () {
+    'use strict';
+
     var texture = PIXI.Texture.fromFrame("effect_shadow.png");
     var shadow = new PIXI.Sprite(texture);
     shadow.anchor.x = 0.5;
@@ -443,6 +421,7 @@ Hero.prototype.applyHitWallVelocity = function () {
 };
 
 Hero.prototype.update = function () {
+    'use strict';
 
     var worldX;
     var force;
@@ -453,7 +432,7 @@ Hero.prototype.update = function () {
 
         force = Hero.HERO_START_VELOCITY.Copy();
 
-        if(this.running < 0) {
+        if (this.running < 0) {
             this.heroMc.scale.x = -1;
             force.NegativeSelf();
         } else {
@@ -468,10 +447,15 @@ Hero.prototype.update = function () {
 
     // Update Shadow
     this.shadow.position.x = this.position.x;
-    this.shadow.position.y = this.scroller.mapBuilder.getBlockHeightAt(this.getWorldCenter().x * World.WORLD_SCALE) + 79;
+    this.shadow.position.y = this.scroller.mapBuilder.getBlockHeightAt(
+        this.getWorldCenter().x * World.WORLD_SCALE
+    ) + 79;
 
     shadowScale = 1 - (this.shadow.position.y - this.position.y) / 400;
-    if (shadowScale > 1) shadowScale = 1;
+    if (shadowScale > 1) {
+        shadowScale = 1;
+    }
+
     this.shadow.scale.x = this.shadow.scale.y = shadowScale;
 
     worldX = this.getWorldCenter().x - 210 / World.WORLD_SCALE;
@@ -661,6 +645,8 @@ MapBuilder.prototype.createSteppedWallSpan = function (heightIndex, spanALength,
 };
 
 MapBuilder.prototype.getBlockHeightAt = function (worldX) {
+    'use strict';
+
     var viewportMapBlockX = Math.floor(worldX / WallSlice.WIDTH);
     if (viewportMapBlockX < 0) {
         viewportMapBlockX = 0;
@@ -739,7 +725,9 @@ Scroller.prototype.setViewportX = function (viewportX) {
 
 module.exports = Scroller;
 },{"./far":3,"./map-builder":6,"./mid":7,"./walls":13}],9:[function(require,module,exports){
-function SliceType() {}
+function SliceType() {
+    'use strict';
+}
 
 SliceType.FRONT      = 0;
 SliceType.BACK       = 1;
@@ -750,6 +738,7 @@ SliceType.GAP        = 5;
 
 
 module.exports = SliceType;
+
 },{}],10:[function(require,module,exports){
 module.exports = {
     b2Vec2: Box2D.Common.Math.b2Vec2,
@@ -1228,10 +1217,11 @@ World.prototype.addPlatformToWorld = function (index) {
     var bodyDef = this.platformBodyDefs[index];
     var fixtureDef = this.platformFixtureDefs[index];
     var platform = this.world.CreateBody(bodyDef);
-    var fixture = platform.CreateFixture(fixtureDef);
+    platform.CreateFixture(fixtureDef);
 
     this.platforms.push(platform);
 };
 
 module.exports = World;
+
 },{"./utils/box2d":10}]},{},[2])
