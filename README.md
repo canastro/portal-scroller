@@ -11,7 +11,6 @@ TODO:
  6. Draw Line in the direction of the mouse till collision
  7. Don't allow to go move to the left when at begining of the map
  8. Add documentation
- 9. Add configurations
 
 
 --------------
