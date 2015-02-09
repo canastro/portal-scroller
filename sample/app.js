@@ -1,14 +1,70 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var main = require('./index');
+
 var jumping, jumpKeyDown = false;
 var heldDuration = 0;
 
-function Controls(hero) {
+function Controls(stage, hero) {
     'use strict';
 
+    this.stage = stage;
     this.hero = hero;
 
+    this.createInterface();
     this.addEventListeners();
 }
+
+Controls.prototype.createInterface = function () {
+    var texture = PIXI.Texture.fromImage("assets/resources/cog_icon.png");
+
+    this.cog = new PIXI.Sprite(texture);
+    this.cog.buttonMode = true;
+
+    this.cog.scale.x = 0.3;
+    this.cog.scale.y = 0.3;
+
+    this.cog.anchor.x = 0.5;
+    this.cog.anchor.y = 0.5;
+
+    this.cog.position.x = 400;
+    this.cog.position.y = 0;
+
+    this.cog.interactive = true;
+
+    this.cog.mouseover = function(mouseData){
+       console.log("MOUSE OVER!");
+    }
+
+    this.cog.mouseout = function(mouseData){
+       console.log("MOUSE OUT!");
+    }
+
+    this.cog.mousedown = function(mouseData){
+       console.log("MOUSE DOWN!");
+    }
+
+    this.cog.mouseup = function(mouseData){
+       console.log("MOUSE UP!");
+    }
+
+    this.cog.click = function(mouseData){
+       main.restart();
+    }
+
+    this.cog.touchstart = function(touchData){
+       console.log("TOUCH START!");
+    }
+
+    this.cog.touchend = function(touchData){
+       console.log("TOUCH END!");
+    }
+
+    this.cog.tap = function(touchData){
+       console.log("TAP!");
+    }
+
+    this.stage.addChild(this.cog);
+};
 
 Controls.prototype.addEventListeners = function () {
     'use strict';
@@ -116,8 +172,13 @@ Controls.prototype.update = function () {
     }
 };
 
+Controls.prototype.updateHero = function (hero) {
+    this.hero = hero;
+};
+
 module.exports = Controls;
-},{}],2:[function(require,module,exports){
+
+},{"./index":5}],2:[function(require,module,exports){
 var Scroller = require('./scroller');
 var Hero = require('./hero');
 var World = require('./world');
@@ -153,7 +214,7 @@ function spriteSheetLoaded() {
     gameWorld = new World(stage);
     scroller = new Scroller(stage, gameWorld);
     hero = new Hero(stage, scroller, gameWorld);
-    controls = new Controls(hero);
+    controls = new Controls(stage, hero);
 
     gameWorld.setDebug();
 
@@ -172,7 +233,8 @@ function loadSpriteSheet() {
 function init() {
     'use strict';
 
-    stage = new PIXI.Stage(0x66FF99);
+    var interactive = true;
+    stage = new PIXI.Stage(0x66FF99, interactive);
     renderer = new PIXI.CanvasRenderer(1024, 768, {
         view: document.getElementById("canvas"),
         resolution: 1
@@ -181,8 +243,23 @@ function init() {
     loadSpriteSheet();
 }
 
+function restart() {
+    'use strict';
+
+    scroller.setViewportX(0);
+
+    hero.destroy();
+    hero = new Hero(stage, scroller, gameWorld);
+
+    controls.updateHero(hero);
+}
+
 window.onload = init;
-},{"./controls":1,"./hero":4,"./scroller":7,"./world":13}],3:[function(require,module,exports){
+
+
+module.exports.restart = restart;
+
+},{"./controls":1,"./hero":4,"./scroller":8,"./world":14}],3:[function(require,module,exports){
 function Far() {
     'use strict';
 
@@ -221,16 +298,19 @@ function Hero(stage, scroller, world) {
 
     PIXI.DisplayObjectContainer.call(this);
 
+    this.stage = stage;
     this.scroller = scroller;
     this.world = world.world;
     this.worldScale = World.WORLD_SCALE;
 
     this.createHero();
+    this.shadow = this.createHeroShadow();
     this.heroMc = this.createHeroMovieClip();
 
     this.addChild(this.heroMc);
 
-    stage.addChild(this);
+    this.stage.addChild(this.shadow);
+    this.stage.addChild(this);
 }
 
 // constructor
@@ -270,6 +350,14 @@ Hero.prototype.createHero = function () {
     this.hero.CreateFixture(fixtureDef);
     this.hero.SetFixedRotation(true);
     this.hero.SetLinearVelocity(Hero.HERO_STOP_VELOCITY);
+};
+
+Hero.prototype.createHeroShadow = function() {
+    var texture = PIXI.Texture.fromFrame("effect_shadow.png");
+    var shadow = new PIXI.Sprite(texture);
+    shadow.anchor.x = 0.5;
+    shadow.anchor.y = 0.5;
+    return shadow;
 };
 
 Hero.prototype.createHeroMovieClip = function () {
@@ -358,32 +446,33 @@ Hero.prototype.update = function () {
 
     var worldX;
     var force;
-
+    var shadowScale;
 
     if (!!this.running) {
+        this.heroMc.play();
+
         force = Hero.HERO_START_VELOCITY.Copy();
+
         if(this.running < 0) {
+            this.heroMc.scale.x = -1;
             force.NegativeSelf();
+        } else {
+            this.heroMc.scale.x = 1;
         }
+
         this.applyRunningForce(force);
     } else {
+        this.heroMc.gotoAndStop(0);
         this.hero.SetLinearVelocity(new box2D.b2Vec2(0, this.GetLinearVelocity().y));
     }
 
+    // Update Shadow
+    this.shadow.position.x = this.position.x;
+    this.shadow.position.y = this.scroller.mapBuilder.getBlockHeightAt(this.getWorldCenter().x * World.WORLD_SCALE) + 79;
 
-    if (this.GetLinearVelocity().x === 0){
-        this.heroMc.gotoAndStop(0);
-    } else {
-        if(!this.heroMc.playing) {
-            this.heroMc.play();
-        }
-
-        if (this.GetLinearVelocity().x < 0) {
-            this.heroMc.scale.x = -1;
-        } else if (this.GetLinearVelocity().x > 0) {
-            this.heroMc.scale.x = 1;
-        }
-    }
+    shadowScale = 1 - (this.shadow.position.y - this.position.y) / 400;
+    if (shadowScale > 1) shadowScale = 1;
+    this.shadow.scale.x = this.shadow.scale.y = shadowScale;
 
     worldX = this.getWorldCenter().x - 210 / World.WORLD_SCALE;
     this.scroller.setViewportX(worldX * World.WORLD_SCALE);
@@ -391,8 +480,22 @@ Hero.prototype.update = function () {
     this.position.x = (this.getWorldCenter().x - worldX) * World.WORLD_SCALE;
 };
 
+Hero.prototype.destroy = function () {
+    'use strict';
+
+    this.world.DestroyBody(this.hero);
+
+    this.removeChild(this.heroMC);
+    this.stage.removeChild(this.shadow);
+    this.stage.removeChild(this);
+};
+
+
 module.exports = Hero;
-},{"./utils/box2d":9,"./world":13}],5:[function(require,module,exports){
+
+},{"./utils/box2d":10,"./world":14}],5:[function(require,module,exports){
+module.exports=require(2)
+},{"./controls":1,"./hero":4,"./scroller":8,"./world":14}],6:[function(require,module,exports){
 var SliceType = require('./slice-type');
 var WallSlice = require('./wall-slice');
 var World = require('./world');
@@ -557,8 +660,18 @@ MapBuilder.prototype.createSteppedWallSpan = function (heightIndex, spanALength,
     this.createWallSpan(heightIndex - 2, spanBLength - 1, true, false);
 };
 
+MapBuilder.prototype.getBlockHeightAt = function (worldX) {
+    var viewportMapBlockX = Math.floor(worldX / WallSlice.WIDTH);
+    if (viewportMapBlockX < 0) {
+        viewportMapBlockX = 0;
+    }
+    return this.walls.slices[viewportMapBlockX].y;
+    //return MapBuilder.WALL_HEIGHTS[heightIndex];
+};
+
 module.exports = MapBuilder;
-},{"./slice-type":8,"./wall-slice":10,"./world":13}],6:[function(require,module,exports){
+
+},{"./slice-type":9,"./wall-slice":11,"./world":14}],7:[function(require,module,exports){
 function Mid() {
     'use strict';
 
@@ -589,7 +702,7 @@ Mid.prototype.setViewportX = function (newViewportX) {
 };
 
 module.exports = Mid;
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var Far = require('./far');
 var Mid = require('./mid');
 var Walls = require('./walls');
@@ -625,7 +738,7 @@ Scroller.prototype.setViewportX = function (viewportX) {
 };
 
 module.exports = Scroller;
-},{"./far":3,"./map-builder":5,"./mid":6,"./walls":12}],8:[function(require,module,exports){
+},{"./far":3,"./map-builder":6,"./mid":7,"./walls":13}],9:[function(require,module,exports){
 function SliceType() {}
 
 SliceType.FRONT      = 0;
@@ -637,7 +750,7 @@ SliceType.GAP        = 5;
 
 
 module.exports = SliceType;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 module.exports = {
     b2Vec2: Box2D.Common.Math.b2Vec2,
     b2BodyDef: Box2D.Dynamics.b2BodyDef,
@@ -650,7 +763,7 @@ module.exports = {
     b2CircleShape: Box2D.Collision.Shapes.b2CircleShape,
     b2DebugDraw: Box2D.Dynamics.b2DebugDraw
 };
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function WallSlice(type, y) {
     'use strict';
 
@@ -662,7 +775,7 @@ function WallSlice(type, y) {
 WallSlice.WIDTH = 128;
 
 module.exports = WallSlice;
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /**
  *
  * @constructor
@@ -877,7 +990,7 @@ WallSpritesPool.prototype.shuffle = function (array) {
 };
 
 module.exports = WallSpritesPool;
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var WallSpritesPool = require('./wall-sprites-pool');
 var WallSlice = require('./wall-slice');
 var SliceType = require('./slice-type');
@@ -1021,7 +1134,7 @@ Walls.prototype.removeOldSlices = function (prevViewportSliceX) {
 };
 
 module.exports = Walls;
-},{"./slice-type":8,"./wall-slice":10,"./wall-sprites-pool":11}],13:[function(require,module,exports){
+},{"./slice-type":9,"./wall-slice":11,"./wall-sprites-pool":12}],14:[function(require,module,exports){
 var box2D = require('./utils/box2d');
 
 function World(stage) {
@@ -1121,4 +1234,4 @@ World.prototype.addPlatformToWorld = function (index) {
 };
 
 module.exports = World;
-},{"./utils/box2d":9}]},{},[2])
+},{"./utils/box2d":10}]},{},[2])
