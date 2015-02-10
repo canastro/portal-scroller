@@ -7,9 +7,10 @@ BOX2D:      http://gotoandlearn.com/play.php?id=176
 TODO:
  1. Interactivity restart
  5. Mouse interaction on canvas
- 6. Draw Line in the direction of the mouse till collision
  7. Don't allow to go move to the left when at begining of the map
  8. Add documentation
+ 10. Hero should run slower when running backwards
+ 11. Hero stops for a while when changing direction
 
 
 --------------
