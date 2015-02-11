@@ -8,7 +8,6 @@ TODO:
  1. Interactivity restart
  5. Mouse interaction on canvas
  8. Add documentation
- 10. Hero should run slower when running backwards
  
 
 
